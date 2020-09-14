@@ -1,0 +1,53 @@
+name: Build and Push to Dockerhub
+on:
+  pull_request:
+    paths-ignore:  # Don't trigger deployment when any of these files/folders changes.
+      - '.github/**'
+      - 'README.md'
+      - '.gitignore'
+      - '.gitmodules'
+    branches:
+      - master
+
+# Environment variables available to all jobs and steps in this workflow
+env:
+  GITHUB_SHA: ${{ github.sha }}
+  TAG: prod-${{ github.sha }}
+
+jobs:
+  cleanup-runs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: rokroskar/workflow-run-cleanup-action@v0.2.2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+  setup-build-publish-deploy:
+    name: Setup, Build, Publish, and Deploy to Staging
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip deploy]') || github.event.issue.closed_at != null"
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v1
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and push
+      id: docker_build
+      uses: docker/build-push-action@v2
+      with:
+        push: true
+        tags: vishnunair/pentest:latest
+
+    - name: Image digest
+      run: echo ${{ steps.docker_build.outputs.digest }}

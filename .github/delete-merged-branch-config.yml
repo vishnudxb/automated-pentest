@@ -1,0 +1,5 @@
+exclude:
+  - develop
+  - staging
+  - master
+delete_closed_pr: true
